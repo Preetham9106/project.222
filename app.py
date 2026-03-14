@@ -41,9 +41,18 @@ def init_db():
     )
     """)
 
+    # Create default admin user
+    cursor.execute("SELECT * FROM users WHERE username='admin'")
+    admin = cursor.fetchone()
+
+    if not admin:
+        cursor.execute(
+            "INSERT INTO users (username,password) VALUES (?,?)",
+            ("admin","123")
+        )
+
     conn.commit()
     conn.close()
-
 
 # ---------------- REGISTER ----------------
 @app.route("/register", methods=["GET","POST"])
