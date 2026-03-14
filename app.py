@@ -6,7 +6,6 @@ import os
 app = Flask(__name__)
 app.secret_key = "cloudkitchen123"
 
-# Database path
 DB_PATH = "cloud_kitchen.db"
 
 
@@ -42,7 +41,7 @@ def init_db():
     )
     """)
 
-    # Create default admin if not exists
+    # Default admin user
     cursor.execute("SELECT * FROM users WHERE username='admin'")
     admin = cursor.fetchone()
 
@@ -54,35 +53,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
-
-# ---------------- REGISTER ----------------
-@app.route("/register", methods=["GET","POST"])
-def register():
-
-    if request.method == "POST":
-
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-
-            cursor.execute(
-                "INSERT INTO users (username,password) VALUES (?,?)",
-                (username,password)
-            )
-
-            conn.commit()
-            conn.close()
-
-            return redirect("/login")
-
-        except:
-            return render_template("register.html",error="User already exists")
-
-    return render_template("register.html")
 
 
 # ---------------- LOGIN ----------------
