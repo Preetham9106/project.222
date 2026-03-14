@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = "cloudkitchen123"
 
+# Database path
 DB_PATH = "cloud_kitchen.db"
 
 
@@ -13,6 +15,14 @@ def init_db():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT
+    )
+    """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS items(
@@ -32,8 +42,47 @@ def init_db():
     )
     """)
 
+    # Create default admin if not exists
+    cursor.execute("SELECT * FROM users WHERE username='admin'")
+    admin = cursor.fetchone()
+
+    if not admin:
+        cursor.execute(
+            "INSERT INTO users (username,password) VALUES (?,?)",
+            ("admin","admin123")
+        )
+
     conn.commit()
     conn.close()
+
+
+# ---------------- REGISTER ----------------
+@app.route("/register", methods=["GET","POST"])
+def register():
+
+    if request.method == "POST":
+
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "INSERT INTO users (username,password) VALUES (?,?)",
+                (username,password)
+            )
+
+            conn.commit()
+            conn.close()
+
+            return redirect("/login")
+
+        except:
+            return render_template("register.html",error="User already exists")
+
+    return render_template("register.html")
 
 
 # ---------------- LOGIN ----------------
@@ -45,7 +94,18 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        if username == "admin" and password == "123":
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (username,password)
+        )
+
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
             session["admin"] = True
             return redirect("/")
         else:
@@ -78,6 +138,7 @@ def index():
     conn.close()
 
     now = datetime.now()
+
     current_date = now.strftime("%d %B %Y")
     current_time = now.strftime("%I:%M %p")
 
@@ -117,6 +178,38 @@ def add_item():
     return render_template("add_item.html")
 
 
+# ---------------- EDIT PRICE ----------------
+@app.route("/edit_price/<int:id>", methods=["GET","POST"])
+def edit_price(id):
+
+    if not session.get("admin"):
+        return redirect("/login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+
+        price = request.form.get("price")
+
+        cursor.execute(
+            "UPDATE items SET price=? WHERE id=?",
+            (price,id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/")
+
+    cursor.execute("SELECT * FROM items WHERE id=?",(id,))
+    item = cursor.fetchone()
+
+    conn.close()
+
+    return render_template("edit_price.html",item=item)
+
+
 # ---------------- DELETE ITEM ----------------
 @app.route("/delete/<int:id>")
 def delete(id):
@@ -150,6 +243,9 @@ def place_order():
 
     if request.method == "POST":
 
+        customer_name = request.form.get("customer_name")
+        phone_number = request.form.get("phone_number")
+
         item_ids = request.form.getlist("item_id")
         quantities = request.form.getlist("quantity")
 
@@ -180,6 +276,7 @@ def place_order():
         if total_quantity > 0:
 
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
             items_text = ", ".join(order_items)
 
             cursor.execute(
@@ -193,7 +290,9 @@ def place_order():
 
             conn.close()
 
-            return redirect(f"/bill/{order_id}")
+            return redirect(
+            f"/bill/{order_id}?name={customer_name}&phone={phone_number}"
+            )
 
     conn.close()
 
@@ -223,13 +322,18 @@ def bill(order_id):
         gst = 0
         total = 0
 
+    customer_name = request.args.get("name")
+    phone_number = request.args.get("phone")
+
     return render_template(
         "bill.html",
         order=order,
         gst=gst,
         total=total,
         kitchen_name="Cloud Kitchen",
-        kitchen_address="Bangalore, India"
+        kitchen_address="Bangalore, India",
+        customer_name=customer_name,
+        phone_number=phone_number
     )
 
 
@@ -251,9 +355,28 @@ def view_orders():
     return render_template("orders.html",orders=orders)
 
 
+# ---------------- DELETE ORDER ----------------
+@app.route("/delete_order/<int:id>")
+def delete_order(id):
+
+    if not session.get("admin"):
+        return redirect("/login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM orders WHERE id=?",(id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/orders")
+
+
 # ---------------- RUN APP ----------------
 if __name__ == "__main__":
 
     init_db()
 
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
