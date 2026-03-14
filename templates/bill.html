@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Bill</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+background:#f5f5f5;
+}
+
+.bill-box{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+@media print{
+.no-print{
+display:none;
+}
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container mt-5">
+
+<div class="bill-box">
+
+<h2 class="text-center">{{ kitchen_name }}</h2>
+
+<p class="text-center">
+{{ kitchen_address }}
+</p>
+
+<hr>
+
+{% if order %}
+
+<p><b>Customer Name :</b> {{ customer_name }}</p>
+
+<p><b>Phone Number :</b> {{ phone_number }}</p>
+
+<hr>
+
+<p><b>Items :</b> {{ order[1] }}</p>
+
+<p><b>Total Quantity :</b> {{ order[2] }}</p>
+
+<hr>
+
+<p><b>Subtotal :</b> ₹{{ order[3] }}</p>
+
+<p><b>GST (5%) :</b> ₹{{ gst }}</p>
+
+<p><b>Grand Total :</b> ₹{{ total }}</p>
+
+<p><b>Date :</b> {{ order[4] }}</p>
+
+{% else %}
+
+<p>No order found</p>
+
+{% endif %}
+
+<hr>
+
+<h5 class="text-center">Thank You Visit Again </h5>
+
+<div class="text-center mt-3 no-print">
+
+<button onclick="window.print()" class="btn btn-success">
+Print Bill
+</button>
+
+<a href="/" class="btn btn-primary">
+Home
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+</html>
