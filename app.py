@@ -53,36 +53,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
-# ---------------- REGISTER ----------------
-@app.route("/register", methods=["GET","POST"])
-def register():
-
-    if request.method == "POST":
-
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute(
-                "INSERT INTO users (username,password) VALUES (?,?)",
-                (username,password)
-            )
-            conn.commit()
-            conn.close()
-
-            return redirect("/login")
-
-        except:
-            conn.close()
-            return render_template("register.html",error="User already exists")
-
-    return render_template("register.html")
-
-
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET","POST"])
 def login():
