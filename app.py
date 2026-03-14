@@ -1,13 +1,13 @@
 from flask import Flask, render_template, request, redirect, session
 import sqlite3
-import os
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = "cloudkitchen123"
 
 # Database path
-DB_PATH = os.path.join(os.getcwd(), "cloud_kitchen.db")
+DB_PATH = "cloud_kitchen.db"
 
 
 # ---------------- DATABASE ----------------
@@ -41,6 +41,16 @@ def init_db():
         date TEXT
     )
     """)
+
+    # Create default admin if not exists
+    cursor.execute("SELECT * FROM users WHERE username='admin'")
+    admin = cursor.fetchone()
+
+    if not admin:
+        cursor.execute(
+            "INSERT INTO users (username,password) VALUES (?,?)",
+            ("admin","admin123")
+        )
 
     conn.commit()
     conn.close()
