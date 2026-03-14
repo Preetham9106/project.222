@@ -6,7 +6,6 @@ import os
 app = Flask(__name__)
 app.secret_key = "cloudkitchen123"
 
-# Database path
 DB_PATH = "cloud_kitchen.db"
 
 
@@ -15,6 +14,14 @@ def init_db():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT
+    )
+    """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS items(
@@ -38,6 +45,35 @@ def init_db():
     conn.close()
 
 
+# ---------------- REGISTER ----------------
+@app.route("/register", methods=["GET","POST"])
+def register():
+
+    if request.method == "POST":
+
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                "INSERT INTO users (username,password) VALUES (?,?)",
+                (username,password)
+            )
+            conn.commit()
+            conn.close()
+
+            return redirect("/login")
+
+        except:
+            conn.close()
+            return render_template("register.html",error="User already exists")
+
+    return render_template("register.html")
+
+
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -47,7 +83,18 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        if username == "admin" and password == "123":
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (username,password)
+        )
+
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
             session["admin"] = True
             return redirect("/")
         else:
