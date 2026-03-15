@@ -45,25 +45,25 @@ display:none;
 
 {% if order %}
 
-<p><b>Customer Name :</b> {{ customer_name }}</p>
+<p><b>Customer Name :</b> {{ order[1] }}</p>
 
-<p><b>Phone Number :</b> {{ phone_number }}</p>
-
-<hr>
-
-<p><b>Items :</b> {{ order[1] }}</p>
-
-<p><b>Total Quantity :</b> {{ order[2] }}</p>
+<p><b>Phone Number :</b> {{ order[2] }}</p>
 
 <hr>
 
-<p><b>Subtotal :</b> ₹{{ order[3] }}</p>
+<p><b>Items :</b> {{ order[3] }}</p>
+
+<p><b>Total Quantity :</b> {{ order[4] }}</p>
+
+<hr>
+
+<p><b>Subtotal :</b> ₹{{ order[5] }}</p>
 
 <p><b>GST (5%) :</b> ₹{{ gst }}</p>
 
 <p><b>Grand Total :</b> ₹{{ total }}</p>
 
-<p><b>Date :</b> {{ order[4] }}</p>
+<p><b>Date :</b> {{ order[6] }}</p>
 
 {% else %}
 
@@ -73,7 +73,7 @@ display:none;
 
 <hr>
 
-<h5 class="text-center">Thank You Visit Again </h5>
+<h5 class="text-center">Thank You Visit Again</h5>
 
 <div class="text-center mt-3 no-print">
 

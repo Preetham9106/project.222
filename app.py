@@ -34,6 +34,8 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_name TEXT,
+        customer_number TEXT,
         item_name TEXT,
         quantity INTEGER,
         total REAL,
@@ -41,7 +43,7 @@ def init_db():
     )
     """)
 
-    # Create default admin user
+    # create admin user
     cursor.execute("SELECT * FROM users WHERE username='admin'")
     admin = cursor.fetchone()
 
@@ -53,6 +55,8 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -77,7 +81,7 @@ def login():
             session["admin"] = True
             return redirect("/")
         else:
-            return render_template("login.html",error="Invalid Login")
+            return render_template("login.html", error="Invalid Login")
 
     return render_template("login.html")
 
@@ -155,12 +159,49 @@ def delete(id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM items WHERE id=?",(id,))
+    cursor.execute("DELETE FROM items WHERE id=?", (id,))
 
     conn.commit()
     conn.close()
 
     return redirect("/")
+
+
+# ---------------- EDIT PRICE ----------------
+@app.route("/edit_price/<int:id>", methods=["GET","POST"])
+def edit_price(id):
+
+    if not session.get("admin"):
+        return redirect("/login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM items WHERE id=?", (id,))
+    item = cursor.fetchone()
+
+    if not item:
+        conn.close()
+        return redirect("/")
+
+    if request.method == "POST":
+
+        name = request.form.get("name")
+        price = request.form.get("price")
+
+        cursor.execute(
+            "UPDATE items SET name=?, price=? WHERE id=?",
+            (name, price, id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/")
+
+    conn.close()
+
+    return render_template("edit_price.html", item=item)
 
 
 # ---------------- PLACE ORDER ----------------
@@ -178,6 +219,9 @@ def place_order():
 
     if request.method == "POST":
 
+        customer_name = request.form.get("customer_name")
+        customer_number = request.form.get("customer_number")
+
         item_ids = request.form.getlist("item_id")
         quantities = request.form.getlist("quantity")
 
@@ -185,7 +229,7 @@ def place_order():
         total_quantity = 0
         order_items = []
 
-        for item_id,qty in zip(item_ids,quantities):
+        for item_id, qty in zip(item_ids, quantities):
 
             if qty and int(qty) > 0:
 
@@ -211,21 +255,22 @@ def place_order():
             items_text = ", ".join(order_items)
 
             cursor.execute(
-            "INSERT INTO orders (item_name,quantity,total,date) VALUES (?,?,?,?)",
-            (items_text,total_quantity,total_amount,date)
+                """INSERT INTO orders
+                (customer_name,customer_number,item_name,quantity,total,date)
+                VALUES (?,?,?,?,?,?)""",
+                (customer_name,customer_number,items_text,total_quantity,total_amount,date)
             )
 
             conn.commit()
 
             order_id = cursor.lastrowid
-
             conn.close()
 
             return redirect(f"/bill/{order_id}")
 
     conn.close()
 
-    return render_template("place_order.html",items=items)
+    return render_template("place_order.html", items=items)
 
 
 # ---------------- BILL ----------------
@@ -238,15 +283,15 @@ def bill(order_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM orders WHERE id=?",(order_id,))
+    cursor.execute("SELECT * FROM orders WHERE id=?", (order_id,))
     order = cursor.fetchone()
 
     conn.close()
 
     if order:
-        subtotal = order[3]
-        gst = round(subtotal * 0.05,2)
-        total = round(subtotal + gst,2)
+        subtotal = order[5]
+        gst = round(subtotal * 0.05, 2)
+        total = round(subtotal + gst, 2)
     else:
         gst = 0
         total = 0
@@ -276,7 +321,25 @@ def view_orders():
 
     conn.close()
 
-    return render_template("orders.html",orders=orders)
+    return render_template("orders.html", orders=orders)
+
+
+# ---------------- DELETE ORDER ----------------
+@app.route("/delete_order/<int:id>")
+def delete_order(id):
+
+    if not session.get("admin"):
+        return redirect("/login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM orders WHERE id=?", (id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/orders")
 
 
 # ---------------- RUN APP ----------------
