@@ -91,6 +91,7 @@ def login():
 def logout():
 
     session.clear()
+    session["order_counter"] = 1
     return redirect("/login")
 
 
@@ -262,11 +263,17 @@ def place_order():
             )
 
             conn.commit()
+        if "order_counter" not in session:
+          session["order_counter"] = 1
 
-            order_id = cursor.lastrowid
-            conn.close()
+        display_id = session["order_counter"]
+        session["order_counter"] += 1
 
-            return redirect(f"/bill/{order_id}")
+        order_id = cursor.lastrowid
+        conn.close()
+
+        return redirect(f"/bill/{order_id}?display={display_id}")
+            
 
     conn.close()
 
@@ -276,6 +283,7 @@ def place_order():
 # ---------------- BILL ----------------
 @app.route("/bill/<int:order_id>")
 def bill(order_id):
+    display_id = request.args.get("display")
 
     if not session.get("admin"):
         return redirect("/login")
@@ -297,13 +305,14 @@ def bill(order_id):
         total = 0
 
     return render_template(
-        "bill.html",
-        order=order,
-        gst=gst,
-        total=total,
-        kitchen_name="Cloud Kitchen",
-        kitchen_address="Bangalore, India"
-    )
+    "bill.html",
+    order=order,
+    gst=gst,
+    total=total,
+    display_id=display_id,
+    kitchen_name="Cloud Kitchen",
+    kitchen_address="Bangalore, India"
+)
 
 
 # ---------------- VIEW ORDERS ----------------
@@ -316,14 +325,28 @@ def view_orders():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM orders")
-    orders = cursor.fetchall()
+    cursor.execute("SELECT * FROM orders ORDER BY id DESC")
+    data = cursor.fetchall()
 
     conn.close()
 
+    orders = []
+    display_id = 1
+
+    for order in data:
+        orders.append((
+            display_id,      # Display order number
+            order[1],        # customer name
+            order[2],        # phone
+            order[3],        # items
+            order[4],        # quantity
+            order[5],        # total
+            order[6],        # date
+            order[0]         # real id for delete
+        ))
+        display_id += 1
+
     return render_template("orders.html", orders=orders)
-
-
 # ---------------- DELETE ORDER ----------------
 @app.route("/delete_order/<int:id>")
 def delete_order(id):
